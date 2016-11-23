@@ -1,0 +1,10 @@
+[package]
+name = "compiler"
+version = "0.1.0"
+authors = ["Jacob Bisnett <jacob.bisnett@gmail.com>"]
+
+[lib]
+name = "compiler"
+plugin = true
+
+[dependencies]

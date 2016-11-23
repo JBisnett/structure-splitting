@@ -1,0 +1,7 @@
+src/librustc_mir/pretty.rs:39
+- Use `-Z dump-mir=<filter>` to dump mir to human readable format
+  format
+    - `all` -- dump MIR for all fns, all passes, all everything
+    - `substring1&substring2,...` -- `&`-separated list of substrings
+      that can appear in the pass-name or the `item_path_str` for the given
+      node-id. If any one of the substrings match, the data is dumped out.

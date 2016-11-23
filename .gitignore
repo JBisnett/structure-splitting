@@ -1,0 +1,2 @@
+*.lock
+/crate_pass/target/*
