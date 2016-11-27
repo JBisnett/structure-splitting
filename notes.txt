@@ -5,3 +5,7 @@ src/librustc_mir/pretty.rs:39
     - `substring1&substring2,...` -- `&`-separated list of substrings
       that can appear in the pass-name or the `item_path_str` for the given
       node-id. If any one of the substrings match, the data is dumped out.
+
+webpage
+- libsyntax/ext/build contains the stuff needed to write syntax extensions
+- need to figure out a way to create the affinity struct s
