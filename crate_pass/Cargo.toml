@@ -8,3 +8,8 @@ name = "compiler"
 plugin = true
 
 [dependencies]
+derive-new = "0.4"
+mir_utils = {path = "../mir_utils"}
+[dependencies.lazy_static]
+git = "https://github.com/rust-lang-nursery/lazy-static.rs"
+

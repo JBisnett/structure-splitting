@@ -9,3 +9,50 @@ src/librustc_mir/pretty.rs:39
 webpage
 - libsyntax/ext/build contains the stuff needed to write syntax extensions
 - need to figure out a way to create the affinity struct s
+ 	
+		
+		
+		
+		
+HOW TO GET OTHER STRUCT NAME
+14:37		*** mib_ejbcl3 joined #rust-internals
+		Rust development discussion | https://botbot.me/mozilla/rust-internals |   http://buildbot.rust-lang.org/homu/queue/rust
+		Topic set by huon!huon@moz-hj272o.8rnv.rggd.6180.2400.IP on Tue Jul 07 2015 14:19:16 GMT-0400 (EDT)
+14:37	mib_ejbcl3	Is there a good way to get the Ty<'tcx> of a struct by name?
+14:37		*** ubsandroid_ joined #rust-internals
+14:37		*** rkruppe-phone joined #rust-internals
+14:38	eddyb	mib_ejbcl3: depends, where are you?
+14:38		*** dduvall quit (Connection closed)
+14:38		*** dduvall joined #rust-internals
+14:38	mib_ejbcl3	mir
+14:38	eddyb	fun
+14:39	eddyb	mib_ejbcl3: so by name is kinda hard, but you can enumerate everything ever if need be
+14:40	mib_ejbcl3	how would i do that?
+14:40	mib_ejbcl3	for reference i'm attempting to do structure splitting
+14:40		*** ubsandroid_ quit (Quit: <3)
+14:40		*** ubsandroid_ joined #rust-internals
+14:41		*** ubsandroid quit (Ping timeout: 121 seconds)
+14:45	eddyb	mib_ejbcl3: splitting? in what sense?
+14:48		*** pcwalton joined #rust-internals
+14:48		+++ ChanServ has given op to pcwalton
+14:48	mib_ejbcl3	eddyb: for struct S {a:A, b:B, c:C}, do something like struct S1{a:A, c:C}, struct S2{b:B}, replacing the uses of S with the appropriate S1 and S2 as makes sense. Its for locality research. 
+14:49		*** bluss quit (Ping timeout: 121 seconds)
+14:49	mib_ejbcl3	Currently I'm doing the structure creation at the AST level with macros
+14:49	eddyb	mib_ejbcl3: you can't do this at the MIR level
+14:50	nagisa	eddyb: its possible, but they gonna need to hack compiler more than they may have initially hoped for 
+14:50	eddyb	mib_ejbcl3: you could use attributes
+14:51		*** cassiersg joined #rust-internals
+14:51	eddyb	to transform the struct into two
+14:51	eddyb	but if you want to replace all the uses.... that's harder
+14:52	mib_ejbcl3	I think i'm currently using attributes for the splitting.
+14:53	eddyb	mib_ejbcl3: so given a struct in the same crate you can go AdtDef -> DefId -> NodeId -> NodeId of parent module -> hir::Mod -> NodeId of child by name -> DefId -> AdtDef
+14:53	eddyb	local crate I mean
+14:53	eddyb	going between two structs in the same module
+14:53	eddyb	mib_ejbcl3: most of it is done through tcx.map's API
+14:54	mib_ejbcl3	ok
+14:54	mib_ejbcl3	that sounds like quite the adventure
+14:54	mib_ejbcl3	but thanks
+14:54	eddyb	mib_ejbcl3: only the child by name is uncommon
+14:55	eddyb	the other steps are a dime a dozen all over rustc
+14:55	mib_ejbcl3	ok
+14:56	mib_ejbcl3	:eddyb thanks I'll try it out
