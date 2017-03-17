@@ -1,0 +1,10 @@
+[package]
+name = "mir_utils"
+version = "0.1.0"
+authors = ["Jacob Bisnett <jacob.bisnett@gmail.com>"]
+
+[lib]
+name = "mir_utils"
+
+[dependencies]
+derive-new = "0.4"

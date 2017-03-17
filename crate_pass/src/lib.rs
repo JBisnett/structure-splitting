@@ -42,7 +42,8 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 use mir_utils::split_struct::{make_split_ty_map, SplitStruct};
-use mir_utils::expand::{ExtenderMirPass, StructFieldReplacer};
+use mir_utils::expand::{StructLvalueSplitter, StructFieldReplacer};
+use mir_utils::expand::deaggregator::Deaggregator;
 
 struct StructureSplitting;
 impl transform::Pass for StructureSplitting {}
@@ -51,8 +52,10 @@ impl transform::Pass for StructureSplitting {}
 impl<'tcx> MirPass<'tcx> for StructureSplitting {
   fn run_pass<'a>(&mut self,
                   tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                  _: MirSource,
+                  source: MirSource,
                   mir: &mut Mir<'tcx>) {
+    Deaggregator {}.run_pass(tcx, source, mir);
+
     let mut decl_map = HashMap::new();
     let string_map = SPLIT_STRUCTS.lock().unwrap();
 
@@ -94,6 +97,8 @@ impl<'tcx> MirPass<'tcx> for StructureSplitting {
         }
       }
     }
+    let mut assignment_splitter = StructLvalueSplitter::new(&decl_map);
+    assignment_splitter.visit_mir(mir);
   }
 }
 
