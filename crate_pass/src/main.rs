@@ -48,13 +48,18 @@ lazy_static! {
 #[allow(unused_variables)]
 fn main() {
   let t = Test {
-    tester2: 13,
-    tester1: 12,
-    tester3: 14,
+    tester2: 0,
+    tester1: 0,
+    tester3: 0,
   };
-  let mut x = t;
-  x.tester1 = 11;
-  x.tester2 = 11;
-  x.tester3 = 14;
-  println!{"{:?}", x};
+  let mut x = Test {
+    tester1: 0,
+    tester2: 0,
+    tester3: 0,
+  };
+  x.tester1 = 1;
+  x.tester2 = 2;
+  x.tester3 = 3;
+  let f = [t, x];
+  println!{"{:?}", f};
 }

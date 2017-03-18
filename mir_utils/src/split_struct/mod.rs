@@ -25,8 +25,7 @@ impl SplitStruct {
     ex: &mut ExtCtxt,
     name: String,
          declarations: HashMap<usize,
-                               Vec<(usize,
-                                              &syntax::ast::StructField)>>)
+                               Vec<(usize, &syntax::ast::StructField)>>)
          -> (Self, Vec<Annotatable>) {
     let mut created_structs = vec![];
     let mut child_names = vec![];

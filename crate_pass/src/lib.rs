@@ -69,10 +69,12 @@ impl<'tcx> MirPass<'tcx> for StructureSplitting {
               let ty = tcx.item_type(tcx.hir.local_def_id(*child_id));
               let child_decl = mir::LocalDecl::new_temp(ty);
               let child_local = mir.local_decls.push(child_decl);
-              if let ty::TyAdt(adt, _) = ty.sty {
-                decl_map.entry(local)
-                  .or_insert(HashMap::new())
-                  .insert(adt, child_local);
+              for sub_ty in ty.walk() {
+                if let ty::TyAdt(adt, _) = sub_ty.sty {
+                  decl_map.entry(local)
+                    .or_insert(HashMap::new())
+                    .insert(adt, child_local);
+                }
               }
             }
           }

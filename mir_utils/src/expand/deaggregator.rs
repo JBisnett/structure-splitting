@@ -25,9 +25,6 @@ impl<'tcx> MirPass<'tcx> for Deaggregator {
                   tcx: TyCtxt<'a, 'tcx, 'tcx>,
                   source: MirSource,
                   mir: &mut Mir<'tcx>) {
-    let node_id = source.item_id();
-    let node_path = tcx.item_path_str(tcx.hir.local_def_id(node_id));
-
     // Do not trigger on constants.  Could be revised in future
     if let MirSource::Fn(_) = source {} else {
       return;
@@ -118,7 +115,7 @@ fn get_aggregate_statement_index<'a, 'tcx, 'b>(start: usize,
       &Rvalue::Aggregate(ref kind, ref operands) => (kind, operands),
       _ => continue,
     };
-    let (adt_def, variant) = match kind {
+    let (_, _) = match kind {
       &AggregateKind::Adt(adt_def, variant, _, None) => (adt_def, variant),
       _ => continue,
     };
