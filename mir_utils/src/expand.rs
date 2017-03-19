@@ -11,46 +11,38 @@ use split_struct::SplitStruct;
 use std::collections::hash_map::HashMap;
 
 #[derive(new)]
-pub struct StructFieldReplacer<'a, 'tcx: 'a, 'v> {
+pub struct StructFieldReplacer<'a, 'tcx: 'a> {
   tcx: TyCtxt<'a, 'tcx, 'tcx>,
-  split_info: &'v SplitStruct,
-  decl_map: &'a HashMap<&'a ty::AdtDef, mir::Local>,
+  mir: &'tcx mir::Mir<'tcx>,
+  split_map: HashMap<ty::Ty<'tcx>, SplitStruct>,
+  decl_map: HashMap<mir::Local, HashMap<&'a ty::AdtDef, mir::Local>>,
 }
 
 
-impl<'a, 'tcx, 'v> visit::MutVisitor<'tcx>
-  for StructFieldReplacer<'a, 'tcx, 'v> {
+impl<'a, 'tcx, 'v> visit::MutVisitor<'tcx> for StructFieldReplacer<'a, 'tcx> {
   fn visit_projection(&mut self,
                       projection: &mut mir::LvalueProjection<'tcx>,
                       context: mir::visit::LvalueContext<'tcx>,
                       location: mir::Location) {
-    println!{"{:?} {:?} {:?}", projection, context, location};
-    if let mir::ProjectionElem::Field(field, ty) = projection.elem {
-      let (ref target_string, index) = self.split_info
-        .field_map[&field.index()];
-      println!{"{:?}[{:?}]",
-               target_string, index};
-      for target_node in self.tcx
-        .hir
-        .nodes_matching_suffix(&[target_string.clone()]) {
-        if let ty::TypeVariants::TyAdt(adt, _) = self.tcx
-          .item_type(self.tcx.hir.local_def_id(target_node))
-          .sty {
-          let target_local = self.decl_map[adt];
-          projection.base = mir::Lvalue::Local(target_local);
-          projection.elem = mir::ProjectionElem::Field(mir::Field::new(index),
-                                                       ty);
+    if let mir::Lvalue::Local(local) = projection.base {
+      if let mir::ProjectionElem::Field(field, ty) = projection.elem {
+        let (ref target_string, index) = self.split_map[&local]
+          .field_map[&field.index()];
+        for target_node in self.tcx
+          .hir
+          .nodes_matching_suffix(&[target_string.clone()]) {
+          if let ty::TypeVariants::TyAdt(adt, _) = self.tcx
+            .item_type(self.tcx.hir.local_def_id(target_node))
+            .sty {
+            let target_local = self.decl_map[&local][adt];
+            projection.base = mir::Lvalue::Local(target_local);
+            projection.elem =
+              mir::ProjectionElem::Field(mir::Field::new(index), ty);
+          }
         }
       }
     }
-    println!{};
-    self.super_projection(projection, context, location);
-  }
-  fn visit_lvalue(&mut self,
-                  lvalue: &mut mir::Lvalue<'tcx>,
-                  context: visit::LvalueContext<'tcx>,
-                  location: mir::Location) {
-    self.super_lvalue(lvalue, context, location);
+    // self.super_projection(projection, context, location);
   }
 }
 

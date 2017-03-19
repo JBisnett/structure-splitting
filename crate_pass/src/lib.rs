@@ -13,21 +13,14 @@ extern crate mir_utils;
 
 // convenience crates
 #[macro_use]
-extern crate derive_new;
-#[macro_use]
 extern crate lazy_static;
 
 use rustc::mir::transform::{self, MirPass, MirSource};
 use rustc::ty::TyCtxt;
-use rustc::ty;
-use rustc::mir;
-use rustc::mir::visit;
 use rustc::mir::Mir;
 use rustc::mir::visit::MutVisitor;
 
 use rustc_plugin::Registry;
-
-use rustc_data_structures::indexed_vec::Idx;
 
 use rustc_mir::def_use;
 
@@ -35,7 +28,6 @@ use syntax::ast;
 use syntax::ext::base::{ExtCtxt, SyntaxExtension, Annotatable};
 use syntax::codemap::Span;
 use syntax::symbol::Symbol;
-use syntax::ext::build::AstBuilder;
 
 use std::collections::HashMap;
 
@@ -54,7 +46,7 @@ impl<'tcx> MirPass<'tcx> for StructureSplitting {
                   tcx: TyCtxt<'a, 'tcx, 'tcx>,
                   source: MirSource,
                   mir: &mut Mir<'tcx>) {
-    Deaggregator {}.run_pass(tcx, source, mir);
+    Deaggregator.run_pass(tcx, source, mir);
 
     let string_map = SPLIT_STRUCTS.lock().unwrap();
 

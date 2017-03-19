@@ -30,3 +30,4 @@ extern crate derive_new;
 pub mod expand;
 pub mod split_struct;
 pub mod deaggregator;
+pub mod walkmut;

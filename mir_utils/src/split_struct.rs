@@ -1,6 +1,8 @@
 extern crate rustc;
 extern crate syntax;
 
+use walkmut::{TypeModifier, StructTypeModifier};
+
 use rustc::ty::TyCtxt;
 use rustc::ty;
 use rustc::mir;
@@ -98,29 +100,21 @@ pub fn make_decl_map<'a, 'tcx, 'b>
    -> HashMap<mir::Local, HashMap<&'a ty::AdtDef, mir::Local>> {
   let mut decl_map = HashMap::new();
   for (local, decl) in mir.local_decls.clone().into_iter_enumerated() {
-    if let Some(adt) = match decl.ty.sty {
-      ty::TyAdt(adt, _) => Some(adt),
-      ty::TyArray(&ty::TyS{sty: ty::TyAdt(adt, _), ..}, ..) => Some(adt),
-      _ => None,
-    } {
-      if let Some(node_id) = tcx.hir.as_local_node_id(adt.did) {
-        if let Some(child_ids) = split_map.get(&node_id) {
-          for child_id in child_ids {
-            let ty = tcx.item_type(tcx.hir.local_def_id(*child_id));
-            if let ty::TyAdt(adt, _) = ty.sty {
-              if let Some(new_ty) = match decl.ty.sty.clone() {
-                ty::TyAdt(..) => Some(ty),
-                ty::TyArray(_, size) =>  {
-                  let nty = tcx.mk_array(ty, size);
-                  Some(nty)
-                },
-                _ => None,
-              } {
-                let child_decl = mir::LocalDecl::new_temp(new_ty);
-                let child_local = mir.local_decls.push(child_decl);
-              decl_map.entry(local)
-                .or_insert(HashMap::new())
-                .insert(adt, child_local);
+    for nty in decl.ty.walk() {
+      if let ty::TyAdt(adt, _) = nty.sty {
+        if let Some(node_id) = tcx.hir.as_local_node_id(adt.did) {
+          if let Some(child_ids) = split_map.get(&node_id) {
+            for child_id in child_ids {
+              let ty = tcx.item_type(tcx.hir.local_def_id(*child_id));
+              if let ty::TyAdt(new_adt, _) = ty.sty {
+                let mut type_modifier = StructTypeModifier::new(adt, new_adt);
+                if let Ok(new_ty) = type_modifier.modify(tcx, decl.ty) {
+                  let child_decl = mir::LocalDecl::new_temp(new_ty);
+                  let child_local = mir.local_decls.push(child_decl);
+                  decl_map.entry(local)
+                    .or_insert(HashMap::new())
+                    .insert(new_adt, child_local);
+                }
               }
             }
           }
