@@ -43,7 +43,7 @@ use std::sync::Mutex;
 
 use mir_utils::split_struct::{make_split_ty_map, SplitStruct};
 use mir_utils::expand::{StructLvalueSplitter, StructFieldReplacer};
-use mir_utils::expand::deaggregator::Deaggregator;
+use mir_utils::deaggregator::Deaggregator;
 
 struct StructureSplitting;
 impl transform::Pass for StructureSplitting {}
@@ -62,7 +62,21 @@ impl<'tcx> MirPass<'tcx> for StructureSplitting {
     let (split_map, ty2structsplit) = make_split_ty_map(tcx, &*string_map);
 
     for (local, decl) in mir.local_decls.clone().into_iter_enumerated() {
-      if let ty::TyAdt(adt, _) = decl.ty.sty {
+      let mut new_decl = decl.clone();
+      if let Some((adt, replacer)) = match decl.ty.sty {
+        ty::TyAdt(adt, subst) => {
+          Some((adt, box |new_adt| ty::TyAdt(adt, subst)))
+        }
+        ty::TyArray(t @ &ty::TyS { sty: ty::TyAdt(adt, subst), .. }, size) => {
+          Some((adt,
+                box |new_adt| {
+            let mut x = t.clone();
+            x.sty = ty::TyAdt(new_adt, subst);
+            ty::TyArray(x, size)
+          }))
+        }
+        _ => None,
+      } {
         if let Some(node_id) = tcx.hir.as_local_node_id(adt.did) {
           if let Some(child_ids) = split_map.get(&node_id) {
             for child_id in child_ids {

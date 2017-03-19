@@ -10,8 +10,6 @@ use split_struct::SplitStruct;
 
 use std::collections::hash_map::HashMap;
 
-pub mod deaggregator;
-
 #[derive(new)]
 pub struct StructFieldReplacer<'a, 'tcx: 'a, 'v> {
   tcx: TyCtxt<'a, 'tcx, 'tcx>,
