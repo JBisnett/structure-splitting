@@ -3,6 +3,7 @@ extern crate syntax;
 
 use rustc::ty::TyCtxt;
 use rustc::ty;
+use rustc::mir;
 
 use std::collections::HashMap;
 use std::vec::Vec;
@@ -88,4 +89,44 @@ pub fn make_split_ty_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
   }
   (split_map, ty2structsplit)
+}
+
+pub fn make_decl_map<'a, 'tcx, 'b>
+  (tcx: TyCtxt<'a, 'tcx, 'tcx>,
+   mir: &mut mir::Mir<'tcx>,
+   split_map: &'b HashMap<ast::NodeId, Vec<ast::NodeId>>)
+   -> HashMap<mir::Local, HashMap<&'a ty::AdtDef, mir::Local>> {
+  let mut decl_map = HashMap::new();
+  for (local, decl) in mir.local_decls.clone().into_iter_enumerated() {
+    if let Some(adt) = match decl.ty.sty {
+      ty::TyAdt(adt, _) => Some(adt),
+      ty::TyArray(&ty::TyS{sty: ty::TyAdt(adt, _), ..}, ..) => Some(adt),
+      _ => None,
+    } {
+      if let Some(node_id) = tcx.hir.as_local_node_id(adt.did) {
+        if let Some(child_ids) = split_map.get(&node_id) {
+          for child_id in child_ids {
+            let ty = tcx.item_type(tcx.hir.local_def_id(*child_id));
+            if let ty::TyAdt(adt, _) = ty.sty {
+              if let Some(new_ty) = match decl.ty.sty.clone() {
+                ty::TyAdt(..) => Some(ty),
+                ty::TyArray(_, size) =>  {
+                  let nty = tcx.mk_array(ty, size);
+                  Some(nty)
+                },
+                _ => None,
+              } {
+                let child_decl = mir::LocalDecl::new_temp(new_ty);
+                let child_local = mir.local_decls.push(child_decl);
+              decl_map.entry(local)
+                .or_insert(HashMap::new())
+                .insert(adt, child_local);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  decl_map
 }

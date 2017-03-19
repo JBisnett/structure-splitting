@@ -41,7 +41,7 @@ use std::collections::HashMap;
 
 use std::sync::Mutex;
 
-use mir_utils::split_struct::{make_split_ty_map, SplitStruct};
+use mir_utils::split_struct::{make_split_ty_map, make_decl_map, SplitStruct};
 use mir_utils::expand::{StructLvalueSplitter, StructFieldReplacer};
 use mir_utils::deaggregator::Deaggregator;
 
@@ -56,45 +56,10 @@ impl<'tcx> MirPass<'tcx> for StructureSplitting {
                   mir: &mut Mir<'tcx>) {
     Deaggregator {}.run_pass(tcx, source, mir);
 
-    let mut decl_map = HashMap::new();
     let string_map = SPLIT_STRUCTS.lock().unwrap();
 
     let (split_map, ty2structsplit) = make_split_ty_map(tcx, &*string_map);
-
-    for (local, decl) in mir.local_decls.clone().into_iter_enumerated() {
-      let mut new_decl = decl.clone();
-      if let Some((adt, replacer)) = match decl.ty.sty {
-        ty::TyAdt(adt, subst) => {
-          Some((adt, box |new_adt| ty::TyAdt(adt, subst)))
-        }
-        ty::TyArray(t @ &ty::TyS { sty: ty::TyAdt(adt, subst), .. }, size) => {
-          Some((adt,
-                box |new_adt| {
-            let mut x = t.clone();
-            x.sty = ty::TyAdt(new_adt, subst);
-            ty::TyArray(x, size)
-          }))
-        }
-        _ => None,
-      } {
-        if let Some(node_id) = tcx.hir.as_local_node_id(adt.did) {
-          if let Some(child_ids) = split_map.get(&node_id) {
-            for child_id in child_ids {
-              let ty = tcx.item_type(tcx.hir.local_def_id(*child_id));
-              let child_decl = mir::LocalDecl::new_temp(ty);
-              let child_local = mir.local_decls.push(child_decl);
-              for sub_ty in ty.walk() {
-                if let ty::TyAdt(adt, _) = sub_ty.sty {
-                  decl_map.entry(local)
-                    .or_insert(HashMap::new())
-                    .insert(adt, child_local);
-                }
-              }
-            }
-          }
-        }
-      }
-    }
+    let decl_map = make_decl_map(tcx, mir, &split_map);
     let mut def_use = def_use::DefUseAnalysis::new(mir);
     def_use.analyze(mir);
     {
