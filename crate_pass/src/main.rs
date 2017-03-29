@@ -1,11 +1,16 @@
+#![allow(dead_code)]
 #![feature(plugin, custom_derive)]
 #![plugin(compiler)]
-#![allow(dead_code)]
 #[affinity_groups(a = 1, b = 2, c = 1)]
+// #[derive(Debug)]
 struct Test {
   pub a: i32,
   pub b: i32,
   pub c: i64,
+}
+
+fn test_print(x: i32) {
+  println!{"{}", x};
 }
 
 #[allow(unused_variables)]
@@ -16,5 +21,5 @@ fn main() {
   x.b = 2;
   x.c = 3;
   let y = [t, x];
-  println!{"{}", y[1].a}
+  test_print(y[1].a);
 }

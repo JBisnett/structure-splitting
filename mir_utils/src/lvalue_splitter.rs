@@ -1,58 +1,19 @@
-use rustc::ty;
 use rustc::ty::TyCtxt;
 use rustc::mir;
 use rustc::mir::visit;
 use rustc::mir::visit::Visitor;
 
-use rustc_data_structures::indexed_vec::Idx;
-
-use split_struct::SplitStruct;
+use split_struct::LocalMap;
 
 use std::collections::hash_map::HashMap;
 
 #[derive(new)]
-pub struct StructFieldReplacer<'a, 'tcx: 'a> {
-  tcx: TyCtxt<'a, 'tcx, 'tcx>,
-  mir: &'tcx mir::Mir<'tcx>,
-  split_map: HashMap<ty::Ty<'tcx>, SplitStruct>,
-  decl_map: HashMap<mir::Local, HashMap<&'a ty::AdtDef, mir::Local>>,
-}
-
-
-impl<'a, 'tcx, 'v> visit::MutVisitor<'tcx> for StructFieldReplacer<'a, 'tcx> {
-  fn visit_projection(&mut self,
-                      projection: &mut mir::LvalueProjection<'tcx>,
-                      context: mir::visit::LvalueContext<'tcx>,
-                      location: mir::Location) {
-    if let mir::Lvalue::Local(local) = projection.base {
-      if let mir::ProjectionElem::Field(field, ty) = projection.elem {
-        let (ref target_string, index) = self.split_map[&local]
-          .field_map[&field.index()];
-        for target_node in self.tcx
-          .hir
-          .nodes_matching_suffix(&[target_string.clone()]) {
-          if let ty::TypeVariants::TyAdt(adt, _) = self.tcx
-            .item_type(self.tcx.hir.local_def_id(target_node))
-            .sty {
-            let target_local = self.decl_map[&local][adt];
-            projection.base = mir::Lvalue::Local(target_local);
-            projection.elem =
-              mir::ProjectionElem::Field(mir::Field::new(index), ty);
-          }
-        }
-      }
-    }
-    // self.super_projection(projection, context, location);
-  }
-}
-
-#[derive(new)]
-struct LvalueReplacer<'a> {
+struct LvalueMultiReplacer<'a> {
   local_index: usize,
   local_map: &'a HashMap<mir::Local, Vec<mir::Local>>,
 }
 
-impl<'tcx, 'a> visit::MutVisitor<'tcx> for LvalueReplacer<'a> {
+impl<'tcx, 'a> visit::MutVisitor<'tcx> for LvalueMultiReplacer<'a> {
   fn visit_lvalue(&mut self,
                   lvalue: &mut mir::Lvalue<'tcx>,
                   _: visit::LvalueContext<'tcx>,
@@ -64,16 +25,13 @@ impl<'tcx, 'a> visit::MutVisitor<'tcx> for LvalueReplacer<'a> {
     }
   }
 }
-
-struct LvalueFinder<'a, 'tcx: 'a> {
-  decl_maps: &'a HashMap<mir::Local, HashMap<&'a ty::AdtDef, mir::Local>>,
+struct LvalueFinder<'tcx> {
+  decl_maps: &'tcx LocalMap<'tcx>,
   value: Option<mir::Lvalue<'tcx>>,
 }
 
-impl<'a, 'tcx> LvalueFinder<'a, 'tcx> {
-  fn new(decl_maps: &'a HashMap<mir::Local,
-                                HashMap<&'a ty::AdtDef, mir::Local>>)
-         -> Self {
+impl<'tcx> LvalueFinder<'tcx> {
+  fn new(decl_maps: &'tcx LocalMap<'tcx>) -> Self {
     LvalueFinder {
       decl_maps: decl_maps,
       value: None,
@@ -81,7 +39,7 @@ impl<'a, 'tcx> LvalueFinder<'a, 'tcx> {
   }
 }
 
-impl<'a, 'tcx> visit::Visitor<'tcx> for LvalueFinder<'a, 'tcx> {
+impl<'tcx> visit::Visitor<'tcx> for LvalueFinder<'tcx> {
   fn visit_assign(&mut self,
                   _: mir::BasicBlock,
                   lvalue: &mir::Lvalue<'tcx>,
@@ -94,13 +52,15 @@ impl<'a, 'tcx> visit::Visitor<'tcx> for LvalueFinder<'a, 'tcx> {
     }
   }
 }
-
 #[derive(new)]
-pub struct StructLvalueSplitter<'a> {
-  decl_maps: &'a HashMap<mir::Local, HashMap<&'a ty::AdtDef, mir::Local>>,
+pub struct StructLvalueSplitter<'a, 'tcx: 'a + 'v, 'v> {
+  tcx: TyCtxt<'a, 'tcx, 'tcx>,
+  mir: &'v mir::Mir<'tcx>,
+  decl_maps: &'a LocalMap<'tcx>,
 }
 
-impl<'a, 'tcx, 'v> visit::MutVisitor<'tcx> for StructLvalueSplitter<'a> {
+impl<'a, 'tcx, 'v> visit::MutVisitor<'tcx>
+  for StructLvalueSplitter<'a, 'tcx, 'v> {
   fn visit_basic_block_data(&mut self,
                             block: mir::BasicBlock,
                             data: &mut mir::BasicBlockData<'tcx>) {
@@ -124,9 +84,9 @@ impl<'a, 'tcx, 'v> visit::MutVisitor<'tcx> for StructLvalueSplitter<'a> {
       let mut finder = LvalueFinder::new(self.decl_maps);
       finder.visit_statement(block, statement, location);
       if let Some(mir::Lvalue::Local(_)) = finder.value {
-        // TODO: make this better
+        // FIXME: this does not work for >2 substructs
         for offset in 0..2 {
-          visitors.push(LvalueReplacer::new(offset, &local_index));
+          visitors.push(LvalueMultiReplacer::new(offset, &local_index));
         }
       }
       if visitors.len() == 0 {
@@ -140,5 +100,19 @@ impl<'a, 'tcx, 'v> visit::MutVisitor<'tcx> for StructLvalueSplitter<'a> {
     }
     data.statements = new_statements;
     self.super_basic_block_data(block, data);
+  }
+
+  fn visit_rvalue(&mut self,
+                  rvalue: &mut mir::Rvalue<'tcx>,
+                  location: mir::Location) {
+    self.super_rvalue(rvalue, location);
+    if let mir::Rvalue::Aggregate(mir::AggregateKind::Array(_), ref ops) =
+           rvalue.clone() {
+      if let Some(first_op) = ops.get(0) {
+        *rvalue =
+          mir::Rvalue::Aggregate(mir::AggregateKind::Array(
+            first_op.ty(&self.mir, self.tcx)), ops.clone());
+      }
+    }
   }
 }

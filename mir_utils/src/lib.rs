@@ -27,7 +27,8 @@ extern crate syntax;
 extern crate derive_new;
 
 
-pub mod expand;
+pub mod lvalue_splitter;
+pub mod struct_base_replacer;
 pub mod split_struct;
 pub mod deaggregator;
 pub mod walkmut;

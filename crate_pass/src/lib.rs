@@ -22,8 +22,6 @@ use rustc::mir::visit::MutVisitor;
 
 use rustc_plugin::Registry;
 
-use rustc_mir::def_use;
-
 use syntax::ast;
 use syntax::ext::base::{ExtCtxt, SyntaxExtension, Annotatable};
 use syntax::codemap::Span;
@@ -34,7 +32,8 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 use mir_utils::split_struct::{make_split_ty_map, make_decl_map, SplitStruct};
-use mir_utils::expand::{StructLvalueSplitter, StructFieldReplacer};
+use mir_utils::lvalue_splitter::StructLvalueSplitter;
+use mir_utils::struct_base_replacer::StructFieldReplacer;
 use mir_utils::deaggregator::Deaggregator;
 
 struct StructureSplitting;
@@ -52,26 +51,17 @@ impl<'tcx> MirPass<'tcx> for StructureSplitting {
 
     let (split_map, ty2structsplit) = make_split_ty_map(tcx, &*string_map);
     let decl_map = make_decl_map(tcx, mir, &split_map);
-    let mut def_use = def_use::DefUseAnalysis::new(mir);
-    def_use.analyze(mir);
+    let mir_copy = mir.clone();
     {
-      for (local, decl) in mir.local_decls
-        .clone()
-        .into_iter_enumerated() {
-        let local_info = def_use.local_info(local);
-        if let Option::Some(split_struct) = ty2structsplit.get(decl.ty) {
-          let ref local_decl_map = decl_map[&local];
-          let mut visitor =
-            StructFieldReplacer::new(tcx, split_struct, local_decl_map);
-          for u in local_info.defs_and_uses.iter() {
-            let loc = u.location;
-            visitor.visit_location(mir, loc);
-          }
-        }
-      }
+      let mut visitor =
+        StructFieldReplacer::new(tcx, &mir_copy, &ty2structsplit, &decl_map);
+      visitor.visit_mir(mir);
     }
-    let mut assignment_splitter = StructLvalueSplitter::new(&decl_map);
-    assignment_splitter.visit_mir(mir);
+    {
+      let mut assignment_splitter =
+        StructLvalueSplitter::new(tcx, &mir_copy, &decl_map);
+      assignment_splitter.visit_mir(mir);
+    }
   }
 }
 

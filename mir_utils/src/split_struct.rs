@@ -71,11 +71,14 @@ impl SplitStruct {
   }
 }
 
+pub type NodeMap = HashMap<ast::NodeId, Vec<ast::NodeId>>;
+pub type SplitMap<'tcx> = HashMap<ty::Ty<'tcx>, SplitStruct>;
+pub type LocalMap<'tcx> = HashMap<mir::Local,
+                                  HashMap<ty::Ty<'tcx>, mir::Local>>;
+
 pub fn make_split_ty_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                  string_map: &HashMap<String, SplitStruct>)
-    -> (HashMap<ast::NodeId, Vec<ast::NodeId>>,
-        HashMap<ty::Ty<'tcx>, SplitStruct>)
-{
+                                   string_map: &HashMap<String, SplitStruct>)
+                                   -> (NodeMap, SplitMap<'tcx>) {
   let mut split_map = HashMap::new();
   let mut ty2structsplit = HashMap::new();
   for (split_struct_name, child_split) in string_map.iter() {
@@ -93,11 +96,11 @@ pub fn make_split_ty_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
   (split_map, ty2structsplit)
 }
 
-pub fn make_decl_map<'a, 'tcx, 'b>
-  (tcx: TyCtxt<'a, 'tcx, 'tcx>,
-   mir: &mut mir::Mir<'tcx>,
-   split_map: &'b HashMap<ast::NodeId, Vec<ast::NodeId>>)
-   -> HashMap<mir::Local, HashMap<&'a ty::AdtDef, mir::Local>> {
+pub fn make_decl_map<'a, 'tcx, 'b>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                   mir: &mut mir::Mir<'tcx>,
+                                   split_map: &'b HashMap<ast::NodeId,
+                                                          Vec<ast::NodeId>>)
+                                   -> LocalMap<'tcx> {
   let mut decl_map = HashMap::new();
   for (local, decl) in mir.local_decls.clone().into_iter_enumerated() {
     for nty in decl.ty.walk() {
@@ -113,7 +116,7 @@ pub fn make_decl_map<'a, 'tcx, 'b>
                   let child_local = mir.local_decls.push(child_decl);
                   decl_map.entry(local)
                     .or_insert(HashMap::new())
-                    .insert(new_adt, child_local);
+                    .insert(ty, child_local);
                 }
               }
             }
