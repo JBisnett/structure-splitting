@@ -1,0 +1,6 @@
+[package]
+name = "test_tuple_arg"
+version = "0.1.0"
+authors = ["Jacob Bisnett <jacob.bisnett@gmail.com>"]
+
+[dependencies]

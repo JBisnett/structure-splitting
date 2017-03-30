@@ -19,15 +19,18 @@ struct LocalFinder {
   local: Option<mir::Local>,
 }
 
+// THIS DEPENDS ON RECURSION DOWN THE BASE OF PROJECTION
 impl<'tcx> visit::Visitor<'tcx> for LocalFinder {
   fn visit_lvalue(&mut self,
                   lvalue: &mir::Lvalue<'tcx>,
                   context: visit::LvalueContext<'tcx>,
                   location: mir::Location) {
-    if let &mir::Lvalue::Local(local) = lvalue {
-      self.local = Some(local);
-    } else {
-      self.super_lvalue(lvalue, context, location);
+    if None == self.local {
+      if let &mir::Lvalue::Local(local) = lvalue {
+        self.local = Some(local);
+      } else {
+        self.super_lvalue(lvalue, context, location);
+      }
     }
   }
 }
@@ -59,7 +62,7 @@ impl<'a, 'tcx, 'mr> visit::MutVisitor<'tcx>
                       projection: &mut mir::LvalueProjection<'tcx>,
                       context: mir::visit::LvalueContext<'tcx>,
                       location: mir::Location) {
-    println!{"{:?}, {:?} {:?}", projection, context, location}
+    // println!{"{:?}, {:?} {:?}", projection, context, location}
     let base_ty = projection.base.ty(&self.mir, self.tcx).to_ty(self.tcx);
     if let Some(split_struct) = self.ty2structsplit.get(base_ty) {
       if let mir::ProjectionElem::Field(field, field_ty) = projection.elem {
@@ -74,7 +77,7 @@ impl<'a, 'tcx, 'mr> visit::MutVisitor<'tcx>
           let base_local = local_visitor.local.unwrap();
           if let Some(target_local) = self.decl_map[&base_local].get(child_ty) {
             LocalReplacer::new(base_local, *target_local)
-              .visit_projection(projection, context, location);
+              .visit_lvalue(&mut projection.base, context, location);
             projection.elem = mir::ProjectionElem::Field(mir::Field::new(index),
                                                          field_ty)
           }

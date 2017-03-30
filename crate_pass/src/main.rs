@@ -2,24 +2,30 @@
 #![feature(plugin, custom_derive)]
 #![plugin(compiler)]
 #[affinity_groups(a = 1, b = 2, c = 1)]
-// #[derive(Debug)]
+#[derive(Debug)]
+#[derive(Clone)]
 struct Test {
-  pub a: i32,
-  pub b: i32,
-  pub c: i64,
+  pub a: usize,
+  pub b: usize,
+  pub c: usize,
 }
 
-fn test_print(x: i32) {
-  println!{"{}", x};
-}
+impl Copy for Test {}
 
 #[allow(unused_variables)]
 fn main() {
-  let t = Test { b: 0, a: 0, c: 0 };
-  let mut x = Test { a: 0, b: 0, c: 0 };
-  x.a = 1;
-  x.b = 2;
-  x.c = 3;
-  let y = [t, x];
-  test_print(y[1].a);
+  let mut y = [Test { a: 0, b: 0, c: 0 }; 10000];
+  for i in 0..10000 {
+    y[i] = Test {
+      a: i,
+      b: i + 1,
+      c: i + 2,
+    };
+  }
+  for i in 0..10000 {
+    y[i].a += y[i].c
+  }
+  for i in 0..10000 {
+    y[i].b += y[i].b
+  }
 }

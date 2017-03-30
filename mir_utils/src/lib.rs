@@ -21,6 +21,7 @@ extern crate rustc;
 extern crate rustc_mir;
 extern crate rustc_data_structures;
 extern crate rustc_plugin;
+extern crate rustc_const_math;
 extern crate syntax;
 
 #[macro_use]
@@ -32,3 +33,4 @@ pub mod struct_base_replacer;
 pub mod split_struct;
 pub mod deaggregator;
 pub mod walkmut;
+pub mod split_arg;

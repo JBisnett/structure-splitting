@@ -35,6 +35,7 @@ use mir_utils::split_struct::{make_split_ty_map, make_decl_map, SplitStruct};
 use mir_utils::lvalue_splitter::StructLvalueSplitter;
 use mir_utils::struct_base_replacer::StructFieldReplacer;
 use mir_utils::deaggregator::Deaggregator;
+use mir_utils::split_arg::ArgumentSplitter;
 
 struct StructureSplitting;
 impl transform::Pass for StructureSplitting {}
@@ -52,6 +53,11 @@ impl<'tcx> MirPass<'tcx> for StructureSplitting {
     let (split_map, ty2structsplit) = make_split_ty_map(tcx, &*string_map);
     let decl_map = make_decl_map(tcx, mir, &split_map);
     let mir_copy = mir.clone();
+    println!{"{:?}", decl_map};
+    {
+      let mut arg_tupler = ArgumentSplitter::new(tcx, &decl_map);
+      arg_tupler.visit_mir(mir);
+    }
     {
       let mut visitor =
         StructFieldReplacer::new(tcx, &mir_copy, &ty2structsplit, &decl_map);

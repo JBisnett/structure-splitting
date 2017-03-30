@@ -3,7 +3,7 @@ use rustc::mir;
 use rustc::mir::visit;
 use rustc::mir::visit::Visitor;
 
-use split_struct::LocalMap;
+use split_struct::{LocalMap};
 
 use std::collections::hash_map::HashMap;
 
@@ -16,12 +16,14 @@ struct LvalueMultiReplacer<'a> {
 impl<'tcx, 'a> visit::MutVisitor<'tcx> for LvalueMultiReplacer<'a> {
   fn visit_lvalue(&mut self,
                   lvalue: &mut mir::Lvalue<'tcx>,
-                  _: visit::LvalueContext<'tcx>,
-                  _: mir::Location) {
+                  context: visit::LvalueContext<'tcx>,
+                  location: mir::Location) {
     if let &mut mir::Lvalue::Local(local) = lvalue {
       if let Some(new_local_list) = self.local_map.get(&local) {
         *lvalue = mir::Lvalue::Local(new_local_list[self.local_index]);
       }
+    } else {
+      self.super_lvalue(lvalue, context, location);
     }
   }
 }
@@ -57,6 +59,7 @@ pub struct StructLvalueSplitter<'a, 'tcx: 'a + 'v, 'v> {
   tcx: TyCtxt<'a, 'tcx, 'tcx>,
   mir: &'v mir::Mir<'tcx>,
   decl_maps: &'a LocalMap<'tcx>,
+  // split_map: &'a SplitMap<'tcx>,
 }
 
 impl<'a, 'tcx, 'v> visit::MutVisitor<'tcx>
@@ -81,6 +84,9 @@ impl<'a, 'tcx, 'v> visit::MutVisitor<'tcx>
       };
       index += 1;
       let mut visitors = vec![];
+      // if let mir::StatementKind::Assign(lv, rv) = statement.kind {
+      //   let assign_ty = lv.ty(self.mir, self.tcx).to_ty(self.tcx);
+      //   if let Some(split_struct) = split_map.get(assign_ty); for offset in 0..split_struct.child_names.length {visitors.push(LvalueMultiReplacer::new(offset, &local_index));}}
       let mut finder = LvalueFinder::new(self.decl_maps);
       finder.visit_statement(block, statement, location);
       if let Some(mir::Lvalue::Local(_)) = finder.value {

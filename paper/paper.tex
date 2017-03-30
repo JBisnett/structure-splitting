@@ -26,4 +26,10 @@ Pre-monomorphization is helpful for several reasons
 \subsection{Rvalue Type induction}
 Need to update the \texttt{AggregateKind::Array} so that it references the right Ty
 
+\subsection{Annoying stuff}
+\label{sec:annoying}
+
+Can't just turn arg into a tuple, need to expand it, because this happens all
+pre-borrow, and thus it can't take the value out of the tuple
+
 \end{document}
