@@ -7,14 +7,6 @@ use rustc_data_structures::indexed_vec::Idx;
 
 use split_struct::{SplitMap, LocalMap};
 
-#[derive(new)]
-pub struct StructFieldReplacer<'a, 'tcx: 'a + 'mr, 'mr> {
-  tcx: TyCtxt<'a, 'tcx, 'tcx>,
-  mir: &'mr mir::Mir<'tcx>,
-  ty2structsplit: &'a SplitMap<'tcx>,
-  decl_map: &'a LocalMap<'tcx>,
-}
-
 struct LocalFinder {
   local: Option<mir::Local>,
 }
@@ -56,13 +48,20 @@ impl<'tcx> visit::MutVisitor<'tcx> for LocalReplacer {
   }
 }
 
+#[derive(new)]
+pub struct StructFieldReplacer<'a, 'tcx: 'a + 'mr, 'mr> {
+  tcx: TyCtxt<'a, 'tcx, 'tcx>,
+  mir: &'mr mir::Mir<'tcx>,
+  ty2structsplit: &'a SplitMap<'tcx>,
+  decl_map: &'a LocalMap<'tcx>,
+}
+
 impl<'a, 'tcx, 'mr> visit::MutVisitor<'tcx>
   for StructFieldReplacer<'a, 'tcx, 'mr> {
   fn visit_projection(&mut self,
                       projection: &mut mir::LvalueProjection<'tcx>,
                       context: mir::visit::LvalueContext<'tcx>,
                       location: mir::Location) {
-    // println!{"{:?}, {:?} {:?}", projection, context, location}
     let base_ty = projection.base.ty(&self.mir, self.tcx).to_ty(self.tcx);
     if let Some(split_struct) = self.ty2structsplit.get(base_ty) {
       if let mir::ProjectionElem::Field(field, field_ty) = projection.elem {

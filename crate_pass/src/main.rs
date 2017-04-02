@@ -16,16 +16,18 @@ impl Copy for Test {}
 fn main() {
   let mut y = [Test { a: 0, b: 0, c: 0 }; 10000];
   for i in 0..10000 {
-    y[i] = Test {
-      a: i,
-      b: i + 1,
-      c: i + 2,
-    };
+    y[i].a = i;
+    y[i].b = i + 1;
   }
+  let test_clone = y[99].clone();
   for i in 0..10000 {
-    y[i].a += y[i].c
+    y[i].a += y[i].a;
+    y[i].c += y[i].c;
   }
   for i in 0..10000 {
     y[i].b += y[i].b
+  }
+  for i in 0..10000 {
+    println!{"{:?} {:?} {:?}", y[i].a, y[i].b, y[i].c};
   }
 }

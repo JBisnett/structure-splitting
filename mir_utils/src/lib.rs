@@ -33,4 +33,6 @@ pub mod struct_base_replacer;
 pub mod split_struct;
 pub mod deaggregator;
 pub mod walkmut;
-pub mod split_arg;
+pub mod split_function_def;
+pub mod split_function_call;
+mod split_utils;
