@@ -19,7 +19,6 @@ fn main() {
     y[i].a = i;
     y[i].b = i + 1;
   }
-  let test_clone = y[99].clone();
   for i in 0..10000 {
     y[i].a += y[i].a;
     y[i].c += y[i].c;
