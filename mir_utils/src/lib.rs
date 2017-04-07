@@ -35,4 +35,5 @@ pub mod deaggregator;
 pub mod walkmut;
 pub mod split_function_def;
 pub mod split_function_call;
+pub mod factor_function_call;
 mod split_utils;
