@@ -1,0 +1,5 @@
+Todo for the paper to be not terrible (in order of importance):
+
+1. Figure out function call splitting
+2. Figure out how closures work
+3. Special case vectors, deques
