@@ -84,9 +84,6 @@ impl<'a, 'tcx, 'v> visit::MutVisitor<'tcx>
       };
       index += 1;
       let mut visitors = vec![];
-      // if let mir::StatementKind::Assign(lv, rv) = statement.kind {
-      //   let assign_ty = lv.ty(self.mir, self.tcx).to_ty(self.tcx);
-      //   if let Some(split_struct) = split_map.get(assign_ty); for offset in 0..split_struct.child_names.length {visitors.push(LvalueMultiReplacer::new(offset, &local_index));}}
       let mut finder = LvalueFinder::new(self.decl_maps);
       finder.visit_statement(block, statement, location);
       if let Some(mir::Lvalue::Local(_)) = finder.value {
