@@ -1,32 +1,86 @@
 #![allow(dead_code)]
-#![feature(plugin, custom_derive)]
+#![feature(test, plugin, custom_derive)]
 #![plugin(compiler)]
 #[affinity_groups(a = 1, b = 2, c = 1)]
 #[derive(Debug)]
 #[derive(Clone)]
-struct Test {
+struct S {
   pub a: usize,
   pub b: usize,
   pub c: usize,
 }
+impl Copy for S {}
 
-impl Copy for Test {}
+#[derive(Debug)]
+#[derive(Clone)]
+struct T {
+  pub a: usize,
+  pub b: usize,
+  pub c: usize,
+}
+impl Copy for T {}
 
-#[allow(unused_variables)]
-fn main() {
-  let mut y = [Test { a: 0, b: 0, c: 0 }; 10000];
-  for i in 0..10000 {
+extern crate test;
+#[test]
+fn test_function_name() {
+  assert_eq!(simple_test_s(), simple_test_t())
+}
+
+#[bench]
+fn yes_pass(b: &mut test::Bencher) {
+  b.iter(|| { simple_test_s(); })
+}
+
+#[bench]
+fn no_pass(b: &mut test::Bencher) {
+  b.iter(|| { simple_test_t(); })
+}
+
+fn simple_test_s() -> usize {
+  let mut y = [S { a: 0, b: 0, c: 0 }; 100000];
+  let mut sum = 0;
+  for i in 0..100000 {
     y[i].a = i;
     y[i].b = i + 1;
   }
-  for i in 0..10000 {
+  for i in 0..100000 {
     y[i].a += y[i].a;
     y[i].c += y[i].c;
   }
-  for i in 0..10000 {
+  for i in 0..100000 {
     y[i].b += y[i].b
   }
-  for i in 0..10000 {
-    println!{"{:?} {:?} {:?}", y[i].a, y[i].b, y[i].c};
+  for i in 0..100000 {
+    sum += y[i].a;
+    sum += y[i].b;
+    sum += y[i].c;
   }
+  sum
+}
+
+fn simple_test_t() -> usize {
+  let mut y = [T { a: 0, b: 0, c: 0 }; 100000];
+  for i in 0..100000 {
+    y[i].a = i;
+    y[i].b = i + 1;
+  }
+  for i in 0..100000 {
+    y[i].a += y[i].a;
+    y[i].c += y[i].c;
+  }
+  for i in 0..100000 {
+    y[i].b += y[i].b
+  }
+  let mut sum = 0;
+  for i in 0..100000 {
+    sum += y[i].a;
+    sum += y[i].b;
+    sum += y[i].c;
+  }
+  sum
+}
+
+#[allow(unused_variables)]
+fn main() {
+  println!{"{}", simple_test_s()};
 }

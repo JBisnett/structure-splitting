@@ -1,6 +1,5 @@
 use rustc::ty::TyCtxt;
 use rustc::ty;
-use rustc::hir;
 use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -46,7 +45,6 @@ fn get_local_map<'v>(local_map: &'v HashMap<ty::Ty, mir::Local>)
       adt.did
     } else {
       panic!{"Local Type Varient isn't an adt"};
-      hir::def_id::DefId::local(hir::def_id::CRATE_DEF_INDEX)
     }
   });
   adt_local_vec.iter()

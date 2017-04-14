@@ -35,10 +35,10 @@ impl<'a, 'tcx> visit::Visitor<'tcx> for FunctionCallSplitter<'a, 'tcx> {
       span: syntax::codemap::DUMMY_SP,
       scope: mir::ARGUMENT_VISIBILITY_SCOPE,
     };
-    if let &mir::TerminatorKind::Call { ref func,
-                                        ref args,
-                                        ref destination,
-                                        ref cleanup } = terminator {
+    if let &mir::TerminatorKind::Call { ref args, 
+        //ref destination, 
+            .. } =
+      terminator {
       let index_ty = self.tcx.types.u128;
       let tuple_assignment_lvalues = |tup: mir::Local| {
         let tup_local = tup.clone();
@@ -92,14 +92,12 @@ impl<'a, 'tcx> visit::Visitor<'tcx> for FunctionCallSplitter<'a, 'tcx> {
           arg.clone()
         })
         .collect::<Vec<_>>();
-      let new_destination = if let &Some((ref lvalue, block)) = destination {};
+      //let new_destination = if let &Some((ref lvalue, block)) = destination {};
       let ref mut current_block = self.mir.basic_blocks_mut()[block];
       if let Some(ref mut current_terminator) = current_block.terminator {
-        if let mir::TerminatorKind::Call { ref func,
-                                           ref mut args,
-                                           ref mut destination,
-                                           ref cleanup } =
-          current_terminator.kind {
+        if let mir::TerminatorKind::Call { ref mut args,
+                                           //ref mut destination,
+                                           .. } = current_terminator.kind {
           *args = new_args;
         }
       }

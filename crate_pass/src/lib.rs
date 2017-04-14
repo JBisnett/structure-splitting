@@ -36,7 +36,8 @@ use mir_utils::lvalue_splitter::StructLvalueSplitter;
 use mir_utils::struct_base_replacer::StructFieldReplacer;
 use mir_utils::deaggregator::Deaggregator;
 use mir_utils::split_function_def::SignatureSplitter;
-use mir_utils::factor_function_call::FunctionCallFactorer;
+use mir_utils::factor_function_call::factor_mir;
+//use mir_utils::split_function_call::split_function_call;
 
 struct StructureSplitting;
 impl transform::Pass for StructureSplitting {}
@@ -50,10 +51,7 @@ impl<'tcx> MirPass<'tcx> for StructureSplitting {
     Deaggregator.run_pass(tcx, source, mir);
 
     let string_map = SPLIT_STRUCTS.lock().unwrap();
-    {
-      let mut factorizer = FunctionCallFactorer::new(tcx, mir);
-      factorizer.factor();
-    }
+    //factor_mir(tcx, mir);
 
     let (split_map, ty2structsplit) = make_split_ty_map(tcx, &*string_map);
     let decl_map = make_decl_map(tcx, mir, &split_map);
@@ -83,8 +81,8 @@ fn expand(ex: &mut ExtCtxt,
           item: Annotatable)
           -> Vec<Annotatable> {
   if let ast::Item { ident, node: ast::ItemKind::Struct(ref data, _), .. } =
-         *item.clone()
-    .expect_item() {
+    *item.clone()
+      .expect_item() {
     let mut declarations = HashMap::new();
     let field_set = data.fields()
       .iter()

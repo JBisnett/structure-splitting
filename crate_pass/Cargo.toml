@@ -9,7 +9,15 @@ plugin = true
 
 [dependencies]
 derive-new = "0.4"
+rand = "0.3"
 mir_utils = {path = "../mir_utils"}
+
+[profile.release]
+debug = true
+
+[profile.bench]
+debug = true
+
 [dependencies.lazy_static]
 git = "https://github.com/rust-lang-nursery/lazy-static.rs"
 

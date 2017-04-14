@@ -51,10 +51,10 @@ impl SplitStruct {
       created_structs.push(Annotatable::Item(x));
     }
     (Self {
-      name: name,
-      child_names: child_names,
-      field_map: field_map,
-    },
+       name: name,
+       child_names: child_names,
+       field_map: field_map,
+     },
      created_structs)
   }
 }
@@ -91,7 +91,7 @@ pub fn make_decl_map<'a, 'tcx, 'b>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    -> LocalMap<'tcx> {
   let mut decl_map = HashMap::new();
   for (local, decl) in mir.local_decls.clone().into_iter_enumerated() {
-    println!{"{:?}: {:?}", local, decl};
+    //println!{"{:?}: {:?}", local, decl};
     for nty in decl.ty.walk() {
       if let ty::TyAdt(adt, _) = nty.sty {
         if let Some(node_id) = tcx.hir.as_local_node_id(adt.did) {
@@ -101,7 +101,7 @@ pub fn make_decl_map<'a, 'tcx, 'b>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
               if let ty::TyAdt(new_adt, _) = ty.sty {
                 let mut type_modifier = StructTypeModifier::new(adt, new_adt);
                 if let Ok(new_ty) = type_modifier.modify(tcx, decl.ty) {
-                  println!{"{:?} -> {:?}", decl.ty, new_ty};
+                  //println!{"{:?} -> {:?}", decl.ty, new_ty};
                   let child_decl = mir::LocalDecl::new_temp(new_ty);
                   let child_local = mir.local_decls.push(child_decl);
                   decl_map.entry(local)
@@ -111,7 +111,7 @@ pub fn make_decl_map<'a, 'tcx, 'b>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
               }
             }
           } else {
-            println!{"Something very wrong has happened"};
+            //println!{"Non-split ADT is detected"};
           }
         }
       }
