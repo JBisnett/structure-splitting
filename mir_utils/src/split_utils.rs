@@ -19,7 +19,7 @@ fn get_type_list<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
   new_type_list.to_vec()
 }
 
-fn get_assignments_for_local<'tcx, 'v>
+pub fn get_assignments_for_local<'tcx, 'v>
   (local: mir::Local,
    new_type_list: &'v [ty::Ty<'tcx>],
    local_vec: &[mir::Local])
@@ -45,7 +45,7 @@ fn get_local_map<'v>(local_map: &'v HashMap<ty::Ty, mir::Local>)
     if let ty::TypeVariants::TyAdt(adt, _) = t.sty {
       adt.did
     } else {
-      println!{"THIS SHOULD NOT HAPPEN"};
+      panic!{"Local Type Varient isn't an adt"};
       hir::def_id::DefId::local(hir::def_id::CRATE_DEF_INDEX)
     }
   });
