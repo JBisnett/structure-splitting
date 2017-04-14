@@ -16,10 +16,14 @@ extern crate mir_utils;
 extern crate lazy_static;
 
 use mir_utils::deaggregator::Deaggregator;
-use mir_utils::lvalue_splitter::StructLvalueSplitter;
 
+use mir_utils::factor_function_call::factor_mir;
+use mir_utils::lvalue_splitter::StructLvalueSplitter;
+use mir_utils::split_function_call::split_function_call;
+use mir_utils::split_function_def::SignatureSplitter;
 use mir_utils::split_struct::{make_split_ty_map, make_decl_map, SplitStruct};
 use mir_utils::struct_base_replacer::StructFieldReplacer;
+
 use rustc::mir::Mir;
 use rustc::mir::transform::{self, MirPass, MirSource};
 use rustc::mir::visit::MutVisitor;
@@ -35,8 +39,6 @@ use syntax::ast;
 use syntax::codemap::Span;
 use syntax::ext::base::{ExtCtxt, SyntaxExtension, Annotatable};
 use syntax::symbol::Symbol;
-// use mir_utils::split_function_def::SignatureSplitter;
-// use mir_utils::factor_function_call::FunctionCallFactorer;
 
 struct StructureSplitting;
 impl transform::Pass for StructureSplitting {}
@@ -46,16 +48,12 @@ impl<'tcx> MirPass<'tcx> for StructureSplitting {
 	fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, source: MirSource,
 		mir: &mut Mir<'tcx>) {
 		Deaggregator.run_pass(tcx, source, mir);
-
+		factor_mir(tcx, mir);
 		let string_map = SPLIT_STRUCTS.lock().unwrap();
-		// {
-		// let mut factorizer = FunctionCallFactorer::new(tcx, mir);
-		// factorizer.factor();
-		// }
-
 		let (split_map, ty2structsplit) = make_split_ty_map(tcx, &*string_map);
 		let decl_map = make_decl_map(tcx, mir, &split_map);
-		println!{"{:?}", decl_map};
+
+		split_function_call(tcx, mir, &decl_map);
 		{
 			let mir_copy = mir.clone();
 			let mut visitor = StructFieldReplacer::new(tcx, &mir_copy, &ty2structsplit, &decl_map);
@@ -66,10 +64,10 @@ impl<'tcx> MirPass<'tcx> for StructureSplitting {
 			let mut assignment_splitter = StructLvalueSplitter::new(tcx, &mir_copy, &decl_map);
 			assignment_splitter.visit_mir(mir);
 		}
-		// {
-		// let mut arg_tupler = SignatureSplitter::new(tcx, &decl_map);
-		// arg_tupler.visit_mir(mir);
-		// }
+		{
+			let mut arg_tupler = SignatureSplitter::new(tcx, &decl_map);
+			arg_tupler.visit_mir(mir);
+		}
 	}
 }
 
