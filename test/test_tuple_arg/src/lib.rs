@@ -18,37 +18,19 @@ struct Test1 {
 struct Test2 {
     b: u64,
 }
+struct TestT(Test1, Test2);
+struct TestR<'a>(&'a Test1, &'a Test2);
 
-// fn test(tup: (&Test1, &Test2)) -> (Test1, Test2) {
-//     let a = *tup.0;
-//     let b = *tup.1;
-//     return (a, b);
-// }
 
-// fn test2(ar: &Test1, br: &Test2) -> (Test1, Test2) {
-//     let a = *ar;
-//     let b = *br;
-//     return (a, b);
-// }
-
-// fn test3(ar: &Test1) -> Test1 {
-//     let a = *ar;
-//     return a;
-// }
-
-// fn test4(ar: &Test) -> Test {
-//     let a = *ar;
-//     return a;
-// }
-
-fn test5(tup: (Test1, Test2)) -> (Test1, Test2) {
-    let a = tup.0;
-    let b = tup.1;
-    return (a, b);
+impl<'a> AsRef<TestR<'a>> for TestR<'a> {
+    fn as_ref(&self) -> &TestR<'a> {
+        return self;
+    }
 }
 
-fn test6(t: Test1, v: Test2) {
-    let (a, b) = test5((t, v));
-    let c = a;
-    let d = b;
+impl<'a> AsMut<TestR<'a>> for TestR<'a> {
+    fn as_mut(&mut self) -> &mut TestR<'a> {
+        return self;
+    }
 }
+fn test() {}

@@ -63,7 +63,7 @@ impl<'a, 'tcx> visit::Visitor<'tcx> for FunctionCallSplitter<'a, 'tcx> {
       };
       let new_args = args.iter()
         .map(|arg| if let mir::Operand::Consume(mir::Lvalue::Local(local)) =
-          *arg {
+                          *arg {
           if let Some(type_locals) = self.decl_maps.get(&local) {
             let (tup_ty_arr, local_vec): (Vec<ty::Ty>, Vec<mir::Local>) =
               type_locals.iter().unzip();
