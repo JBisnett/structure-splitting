@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-#![feature(plugin, custom_derive)]
+#![feature(plugin, test, custom_derive)]
 #![plugin(compiler)]
 #[affinity_groups(a = 1, b = 2, c = 1)]
 #[derive(Debug)]
@@ -11,6 +11,14 @@ struct Test {
 }
 
 impl Copy for Test {}
+
+#[cfg(test)]
+mod bench {
+  fn simple(b: &mut Bencher) {
+    let mut y = [Test { a: 0, b: 0, c: 0 }; 10000];
+  }
+
+}
 
 #[allow(unused_variables)]
 fn main() {
