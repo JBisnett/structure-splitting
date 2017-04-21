@@ -1,7 +1,9 @@
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst;
+use rustc::ty::fold::TypeFolder;
+use rustc::ty::TypeFoldable;
 use rustc::hir;
-
+// possibly move over to using TypeFolders
 pub trait TypeModifier<'a, 'tcx> {
   fn modify_array(&mut self,
                   tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -11,10 +13,7 @@ pub trait TypeModifier<'a, 'tcx> {
     let new_ty = self.modify(tcx, ty)?;
     Ok(tcx.mk_array(new_ty, size))
   }
-  fn modify_slice(&mut self,
-                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                  ty: Ty<'tcx>)
-                  -> Result<Ty<'tcx>, ()> {
+  fn modify_slice(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> Result<Ty<'tcx>, ()> {
     let new_ty = self.modify(tcx, ty)?;
     Ok(tcx.mk_slice(new_ty))
   }
@@ -42,9 +41,7 @@ pub trait TypeModifier<'a, 'tcx> {
   }
   fn modify_dynamic(&mut self,
                     _: TyCtxt<'a, 'tcx, 'tcx>,
-                    _: &ty::Binder<&'tcx
-                                       ty::Slice<
-                                           ty::ExistentialPredicate<'tcx>>>,
+                    _: &ty::Binder<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>,
                     _: &'tcx ty::Region)
                     -> Result<Ty<'tcx>, ()> {
     Err(())
@@ -112,22 +109,16 @@ pub trait TypeModifier<'a, 'tcx> {
     Err(())
   }
 
-  fn modify(&mut self,
-            tcx: TyCtxt<'a, 'tcx, 'tcx>,
-            parent_ty: Ty<'tcx>)
-            -> Result<Ty<'tcx>, ()> {
+  fn modify(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, parent_ty: Ty<'tcx>) -> Result<Ty<'tcx>, ()> {
     match parent_ty.sty {
-      ty::TyBool | ty::TyChar | ty::TyInt(_) | ty::TyUint(_) |
-      ty::TyFloat(_) | ty::TyStr | ty::TyInfer(_) | ty::TyParam(_) |
-      ty::TyNever | ty::TyError => Err(()),
+      ty::TyBool | ty::TyChar | ty::TyInt(_) | ty::TyUint(_) | ty::TyFloat(_) | ty::TyStr |
+      ty::TyInfer(_) | ty::TyParam(_) | ty::TyNever | ty::TyError => Err(()),
       ty::TyArray(ty, size) => self.modify_array(tcx, ty, size),
       ty::TySlice(ty) => self.modify_slice(tcx, ty),
       ty::TyRawPtr(ref mt) => self.modify_raw_ptr(tcx, mt),
       ty::TyRef(ref region, ref mt) => self.modify_ref(tcx, region, mt),
       ty::TyProjection(ref data) => self.modify_projection(tcx, data),
-      ty::TyDynamic(ref obj, ref region) => {
-        self.modify_dynamic(tcx, obj, region)
-      }
+      ty::TyDynamic(ref obj, ref region) => self.modify_dynamic(tcx, obj, region),
       ty::TyAdt(adt, substs) => self.modify_adt(tcx, adt, substs),
       ty::TyAnon(did, substs) => self.modify_anon(tcx, did, substs),
       ty::TyClosure(did, substs) => self.modify_closure(tcx, did, substs),
@@ -154,6 +145,33 @@ impl<'a, 'tcx> TypeModifier<'a, 'tcx> for StructTypeModifier<'tcx> {
       Ok(tcx.mk_adt(self.new, substs))
     } else {
       Err(())
+    }
+  }
+}
+
+// Use this somewhere
+pub struct StructWalker<'a,
+                        'gcx: 'a + 'tcx,
+                        'tcx: 'a,
+                        F: FnMut(&'tcx ty::AdtDef) -> &'tcx ty::AdtDef>
+{
+  tcx: TyCtxt<'a, 'gcx, 'tcx>,
+  st_func: F,
+}
+
+impl<'a, 'gcx, 'tcx, F> TypeFolder<'gcx, 'tcx> for StructWalker<'a, 'gcx, 'tcx, F>
+  where F: FnMut(&'tcx ty::AdtDef) -> &'tcx ty::AdtDef
+{
+  fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> {
+    self.tcx
+  }
+
+  fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+    if let ty::TypeVariants::TyAdt(adt, substs) = t.sty {
+      let new_sty = ty::TypeVariants::TyAdt((self.st_func)(adt), substs.fold_with(self));
+      self.tcx().mk_ty(new_sty)
+    } else {
+      t.super_fold_with(self)
     }
   }
 }
