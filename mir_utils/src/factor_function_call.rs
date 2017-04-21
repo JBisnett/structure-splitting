@@ -27,7 +27,6 @@ impl<'a, 'tcx: 'a> FunctionCallFactorer<'a, 'tcx> {
   fn factor(&mut self) {
     let immut_mir = self.mir.clone();
     self.visit_mir(&immut_mir);
-    // This should not be accessible outside of this function
   }
 }
 impl<'a, 'tcx> visit::Visitor<'tcx> for FunctionCallFactorer<'a, 'tcx> {
@@ -47,7 +46,7 @@ impl<'a, 'tcx> visit::Visitor<'tcx> for FunctionCallFactorer<'a, 'tcx> {
       let mut new_args = vec![];
       for arg in args {
         if let op @ mir::Operand::Consume(mir::Lvalue::Projection(..)) =
-          arg.clone() {
+               arg.clone() {
           let local_ty = arg.ty(true_mir, self.tcx);
           let new_local = true_mir.local_decls
             .push(mir::LocalDecl::new_temp(local_ty));
@@ -68,7 +67,7 @@ impl<'a, 'tcx> visit::Visitor<'tcx> for FunctionCallFactorer<'a, 'tcx> {
       }
       let new_destination =
         if let &Some((ref proj @ mir::Lvalue::Projection(..), target)) =
-          destination {
+               destination {
           let proj_ty = proj.ty(true_mir, self.tcx).to_ty(self.tcx);
           let new_local = true_mir.local_decls
             .push(mir::LocalDecl::new_temp(proj_ty));
