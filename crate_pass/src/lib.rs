@@ -50,11 +50,12 @@ impl<'tcx> MirPass<'tcx> for StructureSplitting {
 		Deaggregator.run_pass(tcx, source, mir);
 
 		let string_map = SPLIT_STRUCTS.lock().unwrap();
-		//factor_mir(tcx, mir);
+		factor_mir(tcx, mir);
 
 		let (split_map, ty2structsplit) = make_split_ty_map(tcx, &*string_map);
 		let decl_map = make_decl_map(tcx, mir, &split_map);
-		println!{"{:?}", decl_map};
+		split_function_call(tcx, mir, &decl_map);
+		// println!{"{:?}", decl_map};
 		{
 			let mir_copy = mir.clone();
 			let mut visitor = StructFieldReplacer::new(tcx, &mir_copy, &ty2structsplit, &decl_map);
@@ -73,9 +74,8 @@ impl<'tcx> MirPass<'tcx> for StructureSplitting {
 }
 
 fn expand(ex: &mut ExtCtxt, _: Span, meta: &ast::MetaItem, item: Annotatable) -> Vec<Annotatable> {
-	if let ast::Item { ident, node: ast::ItemKind::Struct(ref data, _), .. } =
-		*item.clone()
-			.expect_item() {
+	if let ast::Item { ident, node: ast::ItemKind::Struct(ref data, _), .. } = *item.clone()
+		.expect_item() {
 		let mut declarations = HashMap::new();
 		let field_set = data.fields()
 			.iter()

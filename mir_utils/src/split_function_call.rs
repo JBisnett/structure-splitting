@@ -35,10 +35,7 @@ impl<'a, 'tcx> visit::Visitor<'tcx> for FunctionCallSplitter<'a, 'tcx> {
       span: syntax::codemap::DUMMY_SP,
       scope: mir::ARGUMENT_VISIBILITY_SCOPE,
     };
-    if let &mir::TerminatorKind::Call { ref args, 
-        //ref destination, 
-            .. } =
-      terminator {
+    if let mir::TerminatorKind::Call { args, destination, .. } = terminator.clone() {
       let index_ty = self.tcx.types.u128;
       let tuple_assignment_lvalues = |tup: mir::Local| {
         let tup_local = tup.clone();
@@ -52,32 +49,28 @@ impl<'a, 'tcx> visit::Visitor<'tcx> for FunctionCallSplitter<'a, 'tcx> {
             ty: index_ty.clone(),
             literal: op_lit,
           });
-          let tuple_projection =
-            mir::Lvalue::Projection(box mir::LvalueProjection {
-              base: mir::Lvalue::Local(tup_local),
-              elem: mir::ProjectionElem::Index(op_index),
-            });
+          let tuple_projection = mir::Lvalue::Projection(box mir::LvalueProjection {
+            base: mir::Lvalue::Local(tup_local),
+            elem: mir::ProjectionElem::Index(op_index),
+          });
           let local_lvalue = mir::Lvalue::Local(arg_local);
           (tuple_projection, local_lvalue)
         }
       };
       let new_args = args.iter()
-        .map(|arg| if let mir::Operand::Consume(mir::Lvalue::Local(local)) =
-                          *arg {
+        .map(|arg| if let mir::Operand::Consume(mir::Lvalue::Local(local)) = *arg {
           if let Some(type_locals) = self.decl_maps.get(&local) {
-            let (tup_ty_arr, local_vec): (Vec<ty::Ty>, Vec<mir::Local>) =
-              type_locals.iter().unzip();
+            let (tup_ty_arr, local_vec): (Vec<ty::Ty>, Vec<mir::Local>) = type_locals.iter()
+              .unzip();
             let tup_ty = self.tcx.intern_tup(&*tup_ty_arr, false);
-            let tup_local =
-              self.mir.local_decls.push(mir::LocalDecl::new_temp(tup_ty));
+            let tup_local = self.mir.local_decls.push(mir::LocalDecl::new_temp(tup_ty));
             let assignments = local_vec.into_iter()
               .enumerate()
               .map(tuple_assignment_lvalues(tup_local))
               .map(|(tuple_projection, local_lvalue)| {
                 let assign_kind =
-                          mir::StatementKind::Assign
-                          (tuple_projection, mir::Rvalue::Use
-                           (mir::Operand::Consume(local_lvalue)));
+                  mir::StatementKind::Assign(tuple_projection,
+                                             mir::Rvalue::Use(mir::Operand::Consume(local_lvalue)));
                 mir::Statement {
                   source_info: source_info,
                   kind: assign_kind,
@@ -92,13 +85,49 @@ impl<'a, 'tcx> visit::Visitor<'tcx> for FunctionCallSplitter<'a, 'tcx> {
           arg.clone()
         })
         .collect::<Vec<_>>();
-      //let new_destination = if let &Some((ref lvalue, block)) = destination {};
+      let new_destination = if let Some((mir::Lvalue::Local(ref local), block)) =
+                                   destination.clone() {
+        if let Some(type_locals) = self.decl_maps.get(&local) {
+          let (tup_ty_arr, local_vec): (Vec<ty::Ty>, Vec<mir::Local>) = type_locals.iter()
+            .unzip();
+          let tup_ty = self.tcx.intern_tup(&*tup_ty_arr, false);
+          let tup_local = self.mir.local_decls.push(mir::LocalDecl::new_temp(tup_ty));
+          let assignments = local_vec.into_iter()
+            .enumerate()
+            .map(tuple_assignment_lvalues(tup_local))
+            .map(|(tuple_projection, local_lvalue)| {
+              let assign_kind =
+                mir::StatementKind::Assign(local_lvalue,
+                                           mir::Rvalue::Use(
+                                               mir::Operand::Consume(tuple_projection)));
+              mir::Statement {
+                source_info: source_info,
+                kind: assign_kind,
+              }
+            })
+            .collect();
+          let assignment_block_data = mir::BasicBlockData {
+            statements: assignments,
+            terminator: Some(mir::Terminator {
+              source_info: source_info,
+              kind: mir::TerminatorKind::Goto { target: block },
+            }),
+            is_cleanup: false,
+          };
+          let assignment_block = self.mir.basic_blocks_mut().push(assignment_block_data);
+          Some((mir::Lvalue::Local(tup_local), assignment_block))
+        } else {
+          destination
+        }
+      } else {
+        destination
+      };
       let ref mut current_block = self.mir.basic_blocks_mut()[block];
       if let Some(ref mut current_terminator) = current_block.terminator {
-        if let mir::TerminatorKind::Call { ref mut args,
-                                           //ref mut destination,
-                                           .. } = current_terminator.kind {
+        if let mir::TerminatorKind::Call { ref mut args, ref mut destination, .. } =
+               current_terminator.kind {
           *args = new_args;
+          *destination = new_destination;
         }
       }
     }

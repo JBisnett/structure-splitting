@@ -24,12 +24,11 @@ pub struct SplitStruct {
 }
 
 impl SplitStruct {
-  pub fn process_declarations(
-    ex: &mut ExtCtxt,
-    name: String,
-         declarations: HashMap<usize,
-                               Vec<(usize, &syntax::ast::StructField)>>)
-         -> (Self, Vec<Annotatable>) {
+  pub fn process_declarations(ex: &mut ExtCtxt,
+                              name: String,
+                              declarations: HashMap<usize,
+                                                    Vec<(usize, &syntax::ast::StructField)>>)
+                              -> (Self, Vec<Annotatable>) {
     let mut created_structs = vec![];
     let mut child_names = vec![];
     let mut field_map = HashMap::new();
@@ -40,29 +39,26 @@ impl SplitStruct {
         let field_index = field_map.values()
           .filter(|&&(ref name, _)| *name == child_struct_name)
           .count();
-        field_map.insert(field_number,
-                         (child_struct_name.clone(), field_index));
+        field_map.insert(field_number, (child_struct_name.clone(), field_index));
       }
       let fields = fields_enumerated.iter().map(|&(_, v)| v.clone()).collect();
       let x = ex.item_struct(DUMMY_SP,
                              ast::Ident::from_str(&*child_struct_name),
-                             ast::VariantData::Struct(fields,
-                                                      ast::DUMMY_NODE_ID));
+                             ast::VariantData::Struct(fields, ast::DUMMY_NODE_ID));
       created_structs.push(Annotatable::Item(x));
     }
     (Self {
-       name: name,
-       child_names: child_names,
-       field_map: field_map,
-     },
+      name: name,
+      child_names: child_names,
+      field_map: field_map,
+    },
      created_structs)
   }
 }
 
 pub type NodeMap = HashMap<ast::NodeId, Vec<ast::NodeId>>;
 pub type SplitMap<'tcx> = HashMap<ty::Ty<'tcx>, SplitStruct>;
-pub type LocalMap<'tcx> = HashMap<mir::Local,
-                                  HashMap<ty::Ty<'tcx>, mir::Local>>;
+pub type LocalMap<'tcx> = HashMap<mir::Local, HashMap<ty::Ty<'tcx>, mir::Local>>;
 
 pub fn make_split_ty_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    string_map: &HashMap<String, SplitStruct>)
@@ -86,12 +82,11 @@ pub fn make_split_ty_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 pub fn make_decl_map<'a, 'tcx, 'b>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    mir: &mut mir::Mir<'tcx>,
-                                   split_map: &'b HashMap<ast::NodeId,
-                                                          Vec<ast::NodeId>>)
+                                   split_map: &'b HashMap<ast::NodeId, Vec<ast::NodeId>>)
                                    -> LocalMap<'tcx> {
   let mut decl_map = HashMap::new();
   for (local, decl) in mir.local_decls.clone().into_iter_enumerated() {
-    //println!{"{:?}: {:?}", local, decl};
+    // println!{"{:?}: {:?}", local, decl};
     for nty in decl.ty.walk() {
       if let ty::TyAdt(adt, _) = nty.sty {
         if let Some(node_id) = tcx.hir.as_local_node_id(adt.did) {
@@ -101,7 +96,7 @@ pub fn make_decl_map<'a, 'tcx, 'b>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
               if let ty::TyAdt(new_adt, _) = ty.sty {
                 let mut type_modifier = StructTypeModifier::new(adt, new_adt);
                 if let Ok(new_ty) = type_modifier.modify(tcx, decl.ty) {
-                  //println!{"{:?} -> {:?}", decl.ty, new_ty};
+                  // println!{"{:?} -> {:?}", decl.ty, new_ty};
                   let child_decl = mir::LocalDecl::new_temp(new_ty);
                   let child_local = mir.local_decls.push(child_decl);
                   decl_map.entry(local)
@@ -111,12 +106,12 @@ pub fn make_decl_map<'a, 'tcx, 'b>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
               }
             }
           } else {
-            //println!{"Non-split ADT is detected"};
+            // println!{"Non-split ADT is detected"};
           }
         }
       }
     }
   }
-  println!{};
+  // println!{};
   decl_map
 }

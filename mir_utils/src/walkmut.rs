@@ -3,7 +3,8 @@ use rustc::ty::subst;
 use rustc::ty::fold::TypeFolder;
 use rustc::ty::TypeFoldable;
 use rustc::hir;
-// possibly move over to using TypeFolders
+// can't really use folders for this type of type modification (splitting)
+// so here is this.
 pub trait TypeModifier<'a, 'tcx> {
   fn modify_array(&mut self,
                   tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -47,10 +48,11 @@ pub trait TypeModifier<'a, 'tcx> {
     Err(())
   }
   fn modify_adt(&mut self,
-                _: TyCtxt<'a, 'tcx, 'tcx>,
+                tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 _: &'tcx ty::AdtDef,
-                _: &'tcx subst::Substs<'tcx>)
+                subst: &'tcx subst::Substs<'tcx>)
                 -> Result<Ty<'tcx>, ()> {
+    // look up Vec and split based on if subst split
     Err(())
   }
 
@@ -71,26 +73,26 @@ pub trait TypeModifier<'a, 'tcx> {
   }
 
   fn modify_tuple(&mut self,
-                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                  tys: &'tcx ty::Slice<Ty<'tcx>>,
-                  default: bool)
+                  _: TyCtxt<'a, 'tcx, 'tcx>,
+                  _: &'tcx ty::Slice<Ty<'tcx>>,
+                  _: bool)
                   -> Result<Ty<'tcx>, ()> {
-    let mut new_tys = vec![];
-    let mut is_changed = false;
-    for ty in tys.iter() {
-      if let Ok(new_ty) = self.modify(tcx, ty) {
-        new_tys.push(new_ty);
-        is_changed = true;
-      } else {
-        new_tys.push(ty);
-      }
-    }
-    if is_changed {
-      let type_list = tcx.intern_type_list(&*new_tys);
-      Ok(tcx.mk_ty(ty::TyTuple(type_list, default)))
-    } else {
-      Err(())
-    }
+    // let mut new_tys = vec![];
+    // let mut is_changed = false;
+    // for ty in tys.iter() {
+    // if let Ok(new_ty) = self.modify(tcx, ty) {
+    // new_tys.push(new_ty);
+    // is_changed = true;
+    // } else {
+    // new_tys.push(ty);
+    // }
+    // }
+    // if is_changed {
+    // let type_list = tcx.intern_type_list(&*new_tys);
+    // Ok(tcx.mk_ty(ty::TyTuple(type_list, default)))
+    // } else {
+    Err(())
+    // }
   }
 
   fn modify_fn_def(&mut self,
