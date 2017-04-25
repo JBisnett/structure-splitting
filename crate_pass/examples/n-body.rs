@@ -22,17 +22,19 @@ impl Copy for Planet {}
 
 fn advance(dt: f64, steps: i32) {
 	let mut rng = rand::thread_rng();
-	let mut bodies = [Planet {
-		x: rng.gen(),
-		y: rng.gen(),
-		z: rng.gen(),
-		vx: rng.gen(),
-		vy: rng.gen(),
-		vz: rng.gen(),
-		mass: rng.gen(),
-	}; N_BODIES];
-
-
+	let mut bodies = (0..N_BODIES)
+		.map(|_| {
+			Planet {
+				x: rng.gen(),
+				y: rng.gen(),
+				z: rng.gen(),
+				vx: rng.gen(),
+				vy: rng.gen(),
+				vz: rng.gen(),
+				mass: rng.gen(),
+			}
+		})
+		.collect::<Vec<_>>();
 	let timer = Instant::now();
 	for _ in 0..steps {
 		for i in 0..N_BODIES {

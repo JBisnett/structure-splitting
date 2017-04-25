@@ -1,7 +1,7 @@
 extern crate rustc;
 extern crate syntax;
 
-use walkmut::{TypeModifier, StructTypeModifier};
+use walkmut::{TypeModifier, SplitTypeModifier};
 
 use rustc::ty::TyCtxt;
 use rustc::ty;
@@ -94,7 +94,7 @@ pub fn make_decl_map<'a, 'tcx, 'b>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             for child_id in child_ids {
               let ty = tcx.item_type(tcx.hir.local_def_id(*child_id));
               if let ty::TyAdt(new_adt, _) = ty.sty {
-                let mut type_modifier = StructTypeModifier::new(adt, new_adt);
+                let mut type_modifier = SplitTypeModifier::new(adt, new_adt);
                 if let Ok(new_ty) = type_modifier.modify(tcx, decl.ty) {
                   // println!{"{:?} -> {:?}", decl.ty, new_ty};
                   let child_decl = mir::LocalDecl::new_temp(new_ty);

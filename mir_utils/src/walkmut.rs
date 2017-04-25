@@ -131,18 +131,52 @@ pub trait TypeModifier<'a, 'tcx> {
   }
 }
 
+// pub struct SplitFuncModifier<'tcx, F>
+// where F: FnMut(&'tcx ty::AdtDef) -> &'tcx ty::AdtDef
+// {
+// adt_modifier: F,
+// }
+
+// impl<'tcx, F> SplitFuncModifier<'tcx, F>
+// where F: FnMut(&'tcx ty::AdtDef) -> &'tcx ty::AdtDef
+// {
+// fn new(f: F) -> Self {
+// Self { adt_modifier: f }
+// }
+// }
+
+// impl<'a, 'tcx, F> TypeModifier<'a, 'tcx> for SplitFuncModifier<'tcx, F>
+// where F: FnMut(&'tcx ty::AdtDef) -> &'tcx ty::AdtDef
+// {
+// fn modify_adt(&mut self,
+// tcx: TyCtxt<'a, 'tcx, 'tcx>,
+// adt: &'tcx ty::AdtDef,
+// substs: &'tcx subst::Substs<'tcx>)
+// -> Result<Ty<'tcx>, ()> {
+// let new_adt = (self.adt_modifier)(adt);
+// if adt != new_adt {
+// Ok(tcx.mk_adt(new_adt, substs))
+// } else {
+// Err(())
+// }
+// }
+// }
+
 #[derive(new)]
-pub struct StructTypeModifier<'tcx> {
+pub struct SplitTypeModifier<'tcx> {
   old: &'tcx ty::AdtDef,
   new: &'tcx ty::AdtDef,
 }
 
-impl<'a, 'tcx> TypeModifier<'a, 'tcx> for StructTypeModifier<'tcx> {
+impl<'a, 'tcx> TypeModifier<'a, 'tcx> for SplitTypeModifier<'tcx> {
   fn modify_adt(&mut self,
                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 adt: &'tcx ty::AdtDef,
                 substs: &'tcx subst::Substs<'tcx>)
                 -> Result<Ty<'tcx>, ()> {
+    // if substs.len()
+    println!{"{:?}", adt.did};
+    println!{"{:?}", substs.len()};
     if adt == self.old {
       Ok(tcx.mk_adt(self.new, substs))
     } else {

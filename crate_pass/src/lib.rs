@@ -50,7 +50,7 @@ impl<'tcx> MirPass<'tcx> for StructureSplitting {
 		Deaggregator.run_pass(tcx, source, mir);
 
 		let string_map = SPLIT_STRUCTS.lock().unwrap();
-		factor_mir(tcx, mir);
+		// factor_mir(tcx, mir);
 
 		let (split_map, ty2structsplit) = make_split_ty_map(tcx, &*string_map);
 		let decl_map = make_decl_map(tcx, mir, &split_map);
@@ -116,7 +116,7 @@ fn expand(ex: &mut ExtCtxt, _: Span, meta: &ast::MetaItem, item: Annotatable) ->
 			SplitStruct::process_declarations(ex, struct_name.to_string(), declarations);
 		shared_struct_table.entry(struct_name.to_string())
 			.or_insert(split_string_obj);
-		// Loop throught fields of shared_structs
+		// Loop through fields of shared_structs
 		created_structs.push(item);
 		created_structs
 	} else {
