@@ -5,7 +5,7 @@ use rustc::mir;
 use rustc::middle;
 use rustc::mir::visit;
 use rustc::mir::visit::Visitor;
-// use rustc_data_structures::indexed_vec::Idx;
+use rustc_data_structures::indexed_vec::Idx;
 use syntax::codemap::DUMMY_SP;
 
 use split_struct::LocalMap;
@@ -35,23 +35,25 @@ impl<'a, 'tcx> visit::Visitor<'tcx> for FunctionCallSplitter<'a, 'tcx> {
       span: syntax::codemap::DUMMY_SP,
       scope: mir::ARGUMENT_VISIBILITY_SCOPE,
     };
-    if let mir::TerminatorKind::Call { args, destination, .. } = terminator.clone() {
+    if let mir::TerminatorKind::Call { func, args, destination, .. } = terminator.clone() {
+      println!{"Function: {:?}", func};
       let index_ty = self.tcx.types.u128;
       let tuple_assignment_lvalues = |tup: mir::Local| {
         let tup_local = tup.clone();
         move |(index, arg_local)| {
-          let op_lit = mir::Literal::Value{
-                        value: middle::const_val::ConstVal::Integral
-                            (middle::const_val::ConstInt::
-                             U128(index as u128))};
-          let op_index = mir::Operand::Constant(mir::Constant {
-            span: DUMMY_SP,
-            ty: index_ty.clone(),
-            literal: op_lit,
-          });
+          //let op_lit = mir::Literal::Value {
+          //value: middle::const_val::ConstVal::Integral(middle::const_val::ConstInt::U128(index as
+          //u128)),
+          //};
+          //let op_index = mir::Operand::Constant(mir::Constant {
+          //span: DUMMY_SP,
+          //ty: index_ty.clone(),
+          //literal: op_lit,
+          //});
           let tuple_projection = mir::Lvalue::Projection(box mir::LvalueProjection {
             base: mir::Lvalue::Local(tup_local),
-            elem: mir::ProjectionElem::Index(op_index),
+            elem: mir::ProjectionElem::Field(mir::Field::new(index),
+                                             self.mir.local_decls[arg_local].ty),
           });
           let local_lvalue = mir::Lvalue::Local(arg_local);
           (tuple_projection, local_lvalue)
@@ -86,7 +88,7 @@ impl<'a, 'tcx> visit::Visitor<'tcx> for FunctionCallSplitter<'a, 'tcx> {
         })
         .collect::<Vec<_>>();
       let new_destination = if let Some((mir::Lvalue::Local(ref local), block)) =
-                                   destination.clone() {
+        destination.clone() {
         if let Some(type_locals) = self.decl_maps.get(&local) {
           let (tup_ty_arr, local_vec): (Vec<ty::Ty>, Vec<mir::Local>) = type_locals.iter()
             .unzip();
@@ -125,7 +127,7 @@ impl<'a, 'tcx> visit::Visitor<'tcx> for FunctionCallSplitter<'a, 'tcx> {
       let ref mut current_block = self.mir.basic_blocks_mut()[block];
       if let Some(ref mut current_terminator) = current_block.terminator {
         if let mir::TerminatorKind::Call { ref mut args, ref mut destination, .. } =
-               current_terminator.kind {
+          current_terminator.kind {
           *args = new_args;
           *destination = new_destination;
         }

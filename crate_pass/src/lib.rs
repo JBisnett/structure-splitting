@@ -17,7 +17,7 @@ extern crate lazy_static;
 
 use mir_utils::deaggregator::Deaggregator;
 
-use mir_utils::factor_function_call::factor_mir;
+//use mir_utils::factor_function_call::factor_mir;
 use mir_utils::lvalue_splitter::StructLvalueSplitter;
 use mir_utils::split_function_call::split_function_call;
 use mir_utils::split_function_def::SignatureSplitter;
@@ -74,8 +74,9 @@ impl<'tcx> MirPass<'tcx> for StructureSplitting {
 }
 
 fn expand(ex: &mut ExtCtxt, _: Span, meta: &ast::MetaItem, item: Annotatable) -> Vec<Annotatable> {
-	if let ast::Item { ident, node: ast::ItemKind::Struct(ref data, _), .. } = *item.clone()
-		.expect_item() {
+	if let ast::Item { ident, node: ast::ItemKind::Struct(ref data, _), .. } =
+		*item.clone()
+			.expect_item() {
 		let mut declarations = HashMap::new();
 		let field_set = data.fields()
 			.iter()

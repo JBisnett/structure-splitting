@@ -3,6 +3,8 @@ use rustc::ty::subst;
 use rustc::ty::fold::TypeFolder;
 use rustc::ty::TypeFoldable;
 use rustc::hir;
+
+use std::collections::HashMap;
 // can't really use folders for this type of type modification (splitting)
 // so here is this.
 pub trait TypeModifier<'a, 'tcx> {
@@ -48,9 +50,9 @@ pub trait TypeModifier<'a, 'tcx> {
     Err(())
   }
   fn modify_adt(&mut self,
-                tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                _: TyCtxt<'a, 'tcx, 'tcx>,
                 _: &'tcx ty::AdtDef,
-                subst: &'tcx subst::Substs<'tcx>)
+                _: &'tcx subst::Substs<'tcx>)
                 -> Result<Ty<'tcx>, ()> {
     // look up Vec and split based on if subst split
     Err(())
@@ -180,7 +182,12 @@ impl<'a, 'tcx> TypeModifier<'a, 'tcx> for SplitTypeModifier<'tcx> {
     if adt == self.old {
       Ok(tcx.mk_adt(self.new, substs))
     } else {
+      //if substs.len() == 1 {
+      //let newsubst = self.modify(tcx, substs.types().nth(0).unwrap())?;
+      //Ok(tcx.mk_adt(adt, tcx.intern_substs(&[subst::Kind::from(newsubst)])))
+      //} else {
       Err(())
+      //}
     }
   }
 }
@@ -208,6 +215,25 @@ impl<'a, 'gcx, 'tcx, F> TypeFolder<'gcx, 'tcx> for StructWalker<'a, 'gcx, 'tcx, 
       self.tcx().mk_ty(new_sty)
     } else {
       t.super_fold_with(self)
+    }
+  }
+}
+
+#[derive(new)]
+pub struct TypeReplacer<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
+  tcx: TyCtxt<'a, 'gcx, 'tcx>,
+  map: HashMap<ty::Ty<'tcx>, ty::Ty<'tcx>>,
+}
+
+impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeReplacer<'a, 'gcx, 'tcx> {
+  fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> {
+    self.tcx
+  }
+  fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+    if let Some(ty) = self.map.get(t) {
+      ty
+    } else {
+      t
     }
   }
 }

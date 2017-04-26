@@ -1,12 +1,12 @@
 #![feature(plugin, custom_derive)]
 #![plugin(compiler)]
-const N_BODIES: usize = 10000;
+const N_BODIES: usize = 100;
 // const N_BODIES: usize = 10000;
 extern crate rand;
 use rand::Rng;
 use std::time::{Duration, Instant};
 
-// #[affinity_groups(x=1, y=1, z=1, vx=2, vy=2, vz=2, mass=2)]
+#[affinity_groups(x=1, y=1, z=1, vx=2, vy=2, vz=2, mass=2)]
 #[derive(Clone)]
 struct Planet {
 	x: f64,
@@ -25,7 +25,7 @@ fn advance(dt: f64, steps: i32) {
 	let mut bodies = (0..N_BODIES)
 		.map(|_| {
 			Planet {
-				x: rng.gen(),
+				x: 0.0,
 				y: rng.gen(),
 				z: rng.gen(),
 				vx: rng.gen(),
