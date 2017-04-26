@@ -5,6 +5,7 @@ use rustc::ty::TypeFoldable;
 use rustc::hir;
 
 use std::collections::HashMap;
+use split_struct::AdtContainer;
 // can't really use folders for this type of type modification (splitting)
 // so here is this.
 pub trait TypeModifier<'a, 'tcx> {
@@ -182,12 +183,12 @@ impl<'a, 'tcx> TypeModifier<'a, 'tcx> for SplitTypeModifier<'tcx> {
     if adt == self.old {
       Ok(tcx.mk_adt(self.new, substs))
     } else {
-      //if substs.len() == 1 {
-      //let newsubst = self.modify(tcx, substs.types().nth(0).unwrap())?;
-      //Ok(tcx.mk_adt(adt, tcx.intern_substs(&[subst::Kind::from(newsubst)])))
-      //} else {
+      // if substs.len() == 1 {
+      // let newsubst = self.modify(tcx, substs.types().nth(0).unwrap())?;
+      // Ok(tcx.mk_adt(adt, tcx.intern_substs(&[subst::Kind::from(newsubst)])))
+      // } else {
       Err(())
-      //}
+      // }
     }
   }
 }
@@ -221,8 +222,8 @@ impl<'a, 'gcx, 'tcx, F> TypeFolder<'gcx, 'tcx> for StructWalker<'a, 'gcx, 'tcx, 
 
 #[derive(new)]
 pub struct TypeReplacer<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-  tcx: TyCtxt<'a, 'gcx, 'tcx>,
-  map: HashMap<ty::Ty<'tcx>, ty::Ty<'tcx>>,
+  tcx: TyCtxt<'a, 'gcx, 'tcx>, // map: HashMap<ty::Ty<'tcx>, ty::Ty<'tcx>>,
+  adt_container: AdtContainer,
 }
 
 impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeReplacer<'a, 'gcx, 'tcx> {
@@ -230,10 +231,36 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeReplacer<'a, 'gcx, 'tcx> {
     self.tcx
   }
   fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-    if let Some(ty) = self.map.get(t) {
-      ty
-    } else {
-      t
-    }
+    let new_ty = match t.sty {
+      // ty::TyArray(ty, size) => self.modify_array(tcx, ty, size),
+      // ty::TySlice(ty) => self.modify_slice(tcx, ty),
+      // ty::TyRawPtr(ref mt) => self.modify_raw_ptr(tcx, mt),
+      ty::TyRef(ref region, ref mt) => {
+        let mut new_ty = t;
+        if let ty::TyAdt(adt, substs) = t.sty {
+          if adt == self.adt_container.orig_adt {
+            let new_region_kind = subst::Kind::from(*region);
+            let mut new_kinds: Vec<_> = vec![new_region_kind];
+            new_kinds.extend(substs.iter().cloned());
+            let new_substs = self.tcx().intern_substs(&new_kinds);
+            new_ty = self.tcx().mk_adt(self.adt_container.rtup_adt, new_substs);
+          }
+        }
+        new_ty
+      }
+      ty::TyAdt(adt, substs) => {
+        let mut new_ty = t;
+        if adt == self.adt_container.orig_adt {
+          new_ty = self.tcx().mk_adt(self.adt_container.tup_adt, substs);
+        } else if format!{"{:?}", adt}.contains("Vec") {
+          if let ty::TyAdt(sast, ssubsts) = substs[0].as_type().unwrap().sty {
+            new_ty = self.tcx().mk_adt(self.adt_container.vtup_adt, ssubsts);
+          }
+        }
+        new_ty
+      }
+      _ => t,
+    };
+    new_ty.super_fold_with(self)
   }
 }

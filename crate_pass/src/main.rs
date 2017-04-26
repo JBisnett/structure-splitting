@@ -14,31 +14,32 @@ struct S {
 	pub b: usize,
 	pub c: usize,
 }
-struct Stup(S1, S2);
-struct SRtup<'a>(&'a S1, &'a S2);
-struct SRGtup<'a, A, B>(&'a A, &'a B);
-impl<'a> AsRef<SRtup<'a>> for SRtup<'a> {
+struct STUP(S1, S2);
+struct SRTUP<'a>(&'a S1, &'a S2);
+
+impl<'a> AsRef<SRTUP<'a>> for SRTUP<'a> {
 	fn as_ref(&self) -> &Self {
 		&self
 	}
 }
-impl<'a, A, B> AsRef<SRGtup<'a, A, B>> for SRtup<'a, A, B> {
-	fn as_ref(&self) -> &Self {
-		&self
-	}
-}
-struct SVtup(Vec<S1>, Vec<S2>);
-impl SVtup {
-	fn push(&mut self, Stup(s1, s2): Stup) {
+
+struct SVTUP(Vec<S1>, Vec<S2>);
+
+impl SVTUP {
+	fn push_tup(&mut self, STUP(s1, s2): STUP) {
 		self.0.push(s1);
 		self.1.push(s2);
 	}
+	fn index_move(&mut self, i: usize) -> SRTUP {
+		SRTUP(&self.0[i], &self.1[i])
+	}
 }
-impl FromIterator<Stup> for SVtup {
-	fn from_iter<I: IntoIterator<Item = Stup>>(iter: I) -> Self {
-		let mut sv = SVtup(vec![], vec![]);
+
+impl FromIterator<STUP> for SVTUP {
+	fn from_iter<I: IntoIterator<Item = STUP>>(iter: I) -> Self {
+		let mut sv = SVTUP(vec![], vec![]);
 		for i in iter {
-			sv.push(i);
+			sv.push_tup(i);
 		}
 		sv
 	}
@@ -62,16 +63,20 @@ fn test_function_name() {
 
 #[bench]
 fn yes_pass(b: &mut test::Bencher) {
-	b.iter(|| { simple_test_s(); })
+	b.iter(|| {
+		simple_test_s();
+	})
 }
 
 #[bench]
 fn no_pass(b: &mut test::Bencher) {
-	b.iter(|| { simple_test_t(); })
+	b.iter(|| {
+		simple_test_t();
+	})
 }
 
 fn simple_test_s() -> usize {
-	let test = Vec::new();
+	let mut test = Vec::new();
 	test.push(S { a: 0, b: 0, c: 0 });
 	let mut y = [S { a: 0, b: 0, c: 0 }; 100000];
 	let mut sum = 0;
